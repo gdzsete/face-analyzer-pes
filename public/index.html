@@ -1,0 +1,124 @@
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10131b">
+<title>Face Analyzer — PES 2021</title>
+<style>
+:root{color-scheme:dark;--panel:#171c27;--line:#2b3445;--muted:#9ca8ba;--text:#f4f6fb;--accent:#79e0bb;--accent2:#b7a1ff}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#1b2634 0,#0d1017 55%);color:var(--text);font:15px/1.55 system-ui,sans-serif}
+main{width:min(960px,92vw);margin:42px auto 70px}
+.top{display:flex;gap:12px;align-items:center;margin-bottom:26px}
+.logo{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#10131b;font-weight:900;font-size:22px}
+h1{font-size:clamp(27px,5vw,40px);line-height:1.08;margin:0;letter-spacing:-1.3px}
+.sub,.hint{color:var(--muted)}
+.panel{background:rgba(23,28,39,.94);border:1px solid var(--line);border-radius:20px;padding:24px;margin:18px 0;box-shadow:0 18px 50px #0003}
+h2{font-size:19px;margin:0 0 8px}
+.hint{font-size:13px;margin:0 0 18px}
+.uploads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.slot{border:1px dashed #526078;border-radius:14px;padding:16px;min-height:160px;display:flex;flex-direction:column;justify-content:space-between;background:#111722}
+.slot strong{display:block}
+.slot small{color:var(--muted);display:block;margin:5px 0 14px}
+.slot input{width:100%;font-size:12px;color:var(--muted)}
+.preview{width:100%;max-height:190px;object-fit:contain;border-radius:9px;margin-top:10px;display:none;background:#090c12}
+button{border:0;border-radius:12px;padding:14px 20px;background:var(--accent);color:#102019;font-weight:800;font-size:15px;cursor:pointer;width:100%;margin-top:17px}
+button:disabled{opacity:.55;cursor:wait}
+.status{color:var(--muted);font-size:13px;margin-top:12px;min-height:20px}
+#result{display:none}
+.report{white-space:pre-wrap;overflow-wrap:anywhere;background:#10151e;border:1px solid var(--line);border-radius:14px;padding:20px;font-size:14px;line-height:1.7}
+.note{font-size:12px;color:var(--muted);margin-top:15px}
+.pill{display:inline-block;color:var(--accent);border:1px solid #396653;padding:3px 9px;border-radius:99px;font-size:11px}
+@media(max-width:700px){main{margin-top:24px}.uploads{grid-template-columns:1fr}.slot{min-height:130px}.panel{padding:18px}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+<div class="logo">F</div>
+<div><h1>Face Analyzer</h1><p class="sub">Análise facial orientada à criação de faces no PES 2021</p></div>
+</header>
+
+<section class="panel">
+<span class="pill">ANÁLISE COM IA</span>
+<h2 style="margin-top:12px">Envie as fotografias</h2>
+<p class="hint">A foto frontal é obrigatória. As vistas lateral e de três quartos melhoram a avaliação de projeção, profundidade e volume.</p>
+<div class="uploads">
+<label class="slot"><span><strong>1. Frontal <span style="color:var(--accent)">*</span></strong><small>Rosto de frente, expressão neutra e boa iluminação.</small></span><input id="frontal" type="file" accept="image/jpeg,image/png,image/webp"><img class="preview" id="prev-frontal"></label>
+<label class="slot"><span><strong>2. Lateral</strong><small>Perfil completo, sem inclinar a cabeça.</small></span><input id="lateral" type="file" accept="image/jpeg,image/png,image/webp"><img class="preview" id="prev-lateral"></label>
+<label class="slot"><span><strong>3. Três quartos</strong><small>Rosto girado aproximadamente 45 graus.</small></span><input id="tresQuartos" type="file" accept="image/jpeg,image/png,image/webp"><img class="preview" id="prev-tresQuartos"></label>
+</div>
+<button id="analyze">Analisar rosto</button>
+<div class="status" id="status" role="status"></div>
+<p class="note">Use fotos nítidas, sem filtros, óculos escuros ou obstruções. A IA pode errar; confira as observações visualmente. As imagens são enviadas ao serviço de IA configurado no servidor para gerar o relatório.</p>
+</section>
+
+<section class="panel" id="result">
+<h2>Relatório da análise</h2>
+<p class="hint">Características observadas e orientações para reproduzir o rosto no editor.</p>
+<div class="report" id="report"></div>
+<button id="copy" type="button">Copiar relatório</button>
+</section>
+</main>
+
+<script>
+const fields=["frontal","lateral","tresQuartos"];
+
+for(const id of fields){
+document.getElementById(id).addEventListener("change",e=>{
+const file=e.target.files[0],img=document.getElementById("prev-"+id);
+if(!file){img.style.display="none";return}
+if(!["image/jpeg","image/png","image/webp"].includes(file.type)){
+alert("Escolha uma imagem JPG, PNG ou WEBP.");
+e.target.value="";
+return
+}
+img.src=URL.createObjectURL(file);
+img.style.display="block";
+});
+}
+
+const button=document.getElementById("analyze");
+const status=document.getElementById("status");
+
+button.addEventListener("click",async()=>{
+const frontal=document.getElementById("frontal").files[0];
+if(!frontal){status.textContent="Envie pelo menos uma fotografia frontal.";return}
+
+const form=new FormData();
+for(const id of fields){
+const f=document.getElementById(id).files[0];
+if(f)form.append(id,f)
+}
+
+button.disabled=true;
+button.textContent="Analisando…";
+status.textContent="A IA está observando as características do rosto. Isso pode levar alguns segundos.";
+document.getElementById("result").style.display="none";
+
+try{
+const response=await fetch("/api/analisar",{method:"POST",body:form});
+const data=await response.json();
+if(!response.ok)throw new Error(data.error||"Erro na análise.");
+document.getElementById("report").textContent=data.analysis;
+document.getElementById("result").style.display="block";
+status.textContent="Análise concluída.";
+document.getElementById("result").scrollIntoView({behavior:"smooth"});
+}catch(err){
+status.textContent=err.message
+}finally{
+button.disabled=false;
+button.textContent="Analisar rosto"
+}
+});
+
+document.getElementById("copy").addEventListener("click",async()=>{
+await navigator.clipboard.writeText(document.getElementById("report").textContent);
+document.getElementById("copy").textContent="Relatório copiado!";
+setTimeout(()=>document.getElementById("copy").textContent="Copiar relatório",1800);
+});
+</script>
+</body>
+</html>
